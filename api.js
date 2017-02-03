@@ -52,7 +52,7 @@ function isApiAuthenticated (req,res,next) {
 // return a simplified object from an entity 
 function entityToJS(ent) {
   var info={};
-  info["id"]=ent.getId();
+  info["id"]=ent.getId().getHexString();
   var attrArray=ent.getAttributes();
     	attrArray.forEach(function(attr) {
     		info[attr.getName()]=attr.getValue();
@@ -80,26 +80,36 @@ function createNode(req, res) {
 	var result = {};
 	// need to get the graph Meta data -> verify we need to do that each time !
 	var nodeMetadata = graphMetadata.getNodeType(nodeTypeName);
-	if ( nodeMetadata != undefined) {
-		var nodeType = gof.createNode(nodeTypeName);
+  if (nodeMetadata==undefined)
+      throw("Node type "+type+" does not exist.");
+	
+		var nodeType = gof.createNode(nodeMetadata);
+
 		var nodeMetadataAttributes= nodeMetadata.getAttributeDescriptors();
+   // logger.logInfo("node attribute "+JSON.stringify(nodeMetadataAttributes));
 		// should we have the class of each fields ?
 		for (var k in props) {
-			if (nodeMetadataAttributes[k] != undefined ) {
+		//	if (nodeMetadataAttributes[k] != undefined ) {
 				nodeType.setAttribute(k,props[k]);
 				logger.logInfo("Using attribute "+k);
-			} else {
-				logger.logInfo("Attribute "+k+" not in metadata.");
-			}
+		//	} else {
+		//		logger.logInfo("Attribute "+k+" not in metadata.");
+		//	}
 		}
 			conn.insertEntity(nodeType);
-			conn.commit(function(){
+    	conn.on("exception",function(exception){
+          logger.logError( "Exception Happens, message : " + exception.message);
+          //conn.disconnect();
+          res.send(exception.message);
+      }).commit(function(){
 				logger.logInfo(
 						"Transaction completed for Node : " + props[0]);
-				result=props;		
+				result=entityToJS(nodeType);	
+        res.send(result);	
 			}); // Write data to database
-    }
-    res.send(result);	
+       
+  
+    
 }
 
 function getNode(req, res) {
@@ -109,6 +119,11 @@ function getNode(req, res) {
     var value=req.params.value;
 	logger.logInfo(" retrieving entities "+type+" "+pkey+" "+value );
 	//conn.getGraphMetadata(true,function() {
+    var nodeMetadata = graphMetadata.getNodeType(type);
+    if (nodeMetadata==undefined)
+      throw("Node type "+type+" does not exist.");
+
+    try {
   	var ckey = gof.createCompositeKey(type);
   	
     ckey.setAttribute(pkey, value);
@@ -119,29 +134,51 @@ function getNode(req, res) {
   	};
 	      	
     conn.getEntity(ckey, props, function (ent){
+
         var result={};
-        var edgeList=[];
+        
+        var edgeArray=[];
+        var nodeArray=[];
+        var nodeList={};
+        var nodeid=ent.getId().getHexString();
         if (ent!=undefined) {
 	    	logger.logInfo(" got entity "+ent.getEntityKind().name);
 	    	var info=entityToJS(ent);
-	    	result["node"]=info;
+	    	nodeList[nodeid]=info;
 	    	var curEdges = ent.getEdges();
+        logger.logInfo(" has edges : "+curEdges.length);
 	    	curEdges.forEach(function(edge) {
-	    		var prop=entityToJS(edge);
-	    		var fromTo=edge.getVertices();
-	    		edgeinfo = {
-	    			"from": fromTo[0].getId(),
-	    			"to" : fromTo[1].getId(),
-	    			"properties" : prop
-	    		}
+          var edgeinfo = {};
+	    		edgeinfo.properties=entityToJS(edge);
+	    		var from=edge.getVertices()[0];
+          var to=edge.getVertices()[1];
+          // add from and to nodes to the node map if necessary
+          if (from.getId().getHexString()!=nodeid) {
+              nodeList[from.getId().getHexString()]=entityToJS(from);
+              
+          }
+           if (to.getId().getHexString()!=nodeid) {
+              nodeList[to.getId().getHexString()]=entityToJS(to);    
+          } 
+          edgeinfo.source=from.getId().getHexString();
+          
+          edgeinfo.target=to.getId().getHexString();
+	    		
 
-	    		edgeList.push(edgeinfo);
+	    		edgeArray.push(edgeinfo);
 	    	});
-	    	result["edges"]=edgeList;
+        for (n in nodeList) {
+          nodeArray.push(nodeList[n]);
+        }
+        result["nodes"]=nodeArray;
+	    	result["links"]=edgeArray;
 	    	logger.logInfo(" got entity with attributes "+info);
         }
     	res.send(result);
     })
+  } catch (err) {
+    res.status(404).send(err.message);
+  }
 //})
 };
 
@@ -193,7 +230,8 @@ function searchGraph(req, res) {
    var graphMetadata = null;
    var gof = null;
 
-
+    // sample application
+    app.use(express.static(__dirname + '/public'));
     // protect /api with the isApiAuthenticated 
     app.all('/api/*',isApiAuthenticated);
     app.route('/api/node/:node_type')
