@@ -55,7 +55,9 @@ function entityToJS(ent) {
   info["id"]=ent.getId().getHexString();
   var attrArray=ent.getAttributes();
     	attrArray.forEach(function(attr) {
-    		info[attr.getName()]=attr.getValue();
+        
+    		  info[attr.getName()]=attr.getValue();
+        
     	});
    return info;
 }
@@ -149,7 +151,7 @@ function getNode(req, res) {
         logger.logInfo(" has edges : "+curEdges.length);
 	    	curEdges.forEach(function(edge) {
           var edgeinfo = {};
-	    		edgeinfo.properties=entityToJS(edge);
+	    		edgeinfo=entityToJS(edge);
 	    		var from=edge.getVertices()[0];
           var to=edge.getVertices()[1];
           // add from and to nodes to the node map if necessary
