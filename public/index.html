@@ -21,6 +21,7 @@
 <!-- Vendor: Angular, followed by our custom Javascripts -->
 <!-- angular v1.5.9 -->
 
+	<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
 
 
     <link rel="stylesheet" href="http://cdn.graphalchemist.com/alchemy.min.css">
@@ -39,8 +40,7 @@
 .nodes circle {
   pointer-events: all;
   stroke: none;
-  stroke-width: 40px;
-  color: blue;
+  stroke-width: 2px;
 }
 
 
@@ -66,13 +66,38 @@
 
 <!-- Our Website Javascripts -->
 <script src="main.js"></script>
-<script>
 
+    <form class="panel panel-default form-horizontal" ng-submit="resetGraph(firstnode)" role="form">
+        <div class="panel-heading">Set the initial node :</div>
+        <br>
+        <div class="form-group">
+            <label for="nodetype" class="col-sm-3 control-label">Node Type</label>
+           
+            <div class="col-sm-4">
+                <select id="nodetype" class="form-control" ng-model="firstnode.type">
 
- 
+                    <option ng-repeat="n in metadata.nodeTypes" value="{{n._name}}">{{n._name}}</option>
+                    
+                </select>
+            </div>
+            <div class="col-sm-5"></div>
 
-</script>
+        </div>
+        <div class="form-group">
+            <label for="pkeyvalue" class="col-sm-3 control-label">key value</label>
+            <div class="col-sm-6">
+                <input type="text" id="pkeyvalue" class="form-control" ng-model="firstnode.keyvalue" />
+            </div>
+            <div class="col-sm-3"></div>
+        </div>
+        
+        
+       
 
+        <input type="submit" value="Set" class="btn  col-sm-offset-3" /> 
+      
+		
+    </form>
 
 </body>
 
