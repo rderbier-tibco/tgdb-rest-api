@@ -1,5 +1,10 @@
 var app = angular.module('graphexplorer');
 
+/*
+*  code copied mainly from 
+*   https://github.com/eisman/neo4jd3
+*   use line to draw edges
+*/
 
 
 app.service('graphVizService', function ($window) {
@@ -25,138 +30,7 @@ app.service('graphVizService', function ($window) {
 		vm.test= function(msg){
 			console.log(" Message : "+msg);
 		}
-		var setup = function() {
-
-
-         // create a copy of the graph 
-         // need as D3 will change nodes and links with a lot of information.
-         
-    /*
-var graph ={nodes:[], links:[]};
-   vm.graph.nodes.forEach(function(n) {
-   	  var nn={};
-   	    for (var attr in n) {
-            if (n.hasOwnProperty(attr)) nn[attr] = n[attr];
-        }
-      graph.nodes.push(nn);
-   });
-   vm.graph.links.forEach(function(l) {
-   	   	  var nl={}; // new link
-   	    for (var attr in l) {
-            if (l.hasOwnProperty(attr)) nl[attr] = l[attr];
-        }
-      graph.links.push(nl);
-   });
-   */
-
-   vm.link = vm.svg.append("g")
-   .attr("class", "links")
-   .selectAll(".line")
-   .data(graph.links)
-   .enter().append("line")
-   .attr("class","line")
-   .attr("stroke-dasharray",function(d){
-   	if (d["relType"] != undefined) {
-
-   		return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokedash || graphconf.default.linkstrokedash : graphconf.default.linkstrokedash)
-   	} else {
-   		return (graphconf.default.linkstrokedash)
-   	}
-
-
-   } )
-   .attr("stroke-width",function(d){
-   	if (d["relType"] != undefined) {
-
-   		return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokewidth || graphconf.default.strokewidth : graphconf.default.strokewidth)
-   	} else {
-   		return (graphconf.default.strokewidth)
-   	}
-
-
-   } )
-   ;
-
-   node = vm.svg.append("g")
-   .attr("class", "nodes")
-   .selectAll("circle")
-   .data(graph.nodes)
-   .enter().append("circle")
-   .attr("r", function(d){
-   	if (d["@name"] != undefined) {
-
-   		return (graphconf.node[d["@name"]] ? graphconf.node[d["@name"]].r || graphconf.default.r : graphconf.default.r)
-   	} else {
-   		return (graphconf.default.r)
-   	}
-
-   } )
-   .attr("fill",function(d){
-   	if (d["@name"] != undefined) {
-
-   		return (graphconf.node[d["@name"]] ? graphconf.node[d["@name"]].fill || graphconf.default.fill : graphconf.default.fill)
-   	} else {
-   		return (graphconf.default.fill)
-   	}
-
-   } )
-   .attr("stroke",function(d){
-   	if (d["@name"] != undefined) {
-
-   		return (graphconf.node[d["@name"]] ? graphconf.node[d["@name"]].stroke || graphconf.default.stroke : graphconf.default.stroke)
-   	} else {
-   		return (graphconf.default.stroke)
-   	}
-
-   } )
-   .call(d3.drag()
-   	.on("start", dragstarted)
-   	.on("drag", dragged)
-   	.on("end", dragended));
-   vm.node.on("dblclick",function(d){
-   	var type=d["@name"];
-   	console.log("more on ", d[graphconf.node[type].keyname]);
-   	getNode(type,d[graphconf.node[type].keyname]);
-   });
-   vm.text = vm.svg.append("g")
-   .attr("class", "labels")
-   .selectAll("g")
-   .data(graph.nodes)
-   .enter().append("g").append("text")
-   .attr("dx", 12)
-   .attr("dy", "1em")
-	.text(function(d) { // return the value of the property name specified by label or "?"
-		if (d["@name"] != undefined) {
-			if (graphconf.node[d["@name"]]!=undefined) {
-				return (graphconf.node[d["@name"]].label ?  d[graphconf.node[d["@name"]].label] || "?" : "?")
-			} else {
-				return ("?")
-			}
-			
-		} else {
-			return ("?")
-		} })
-	.style("text-anchor", "end");
-
-
-
-
-/*
-   node.append("text")
-      .attr("dx", 12)
-      .attr("dy", "1em")
-      .text(function(d) { return d.memberName }).style("text-anchor", "end")
-      .style("font-size", 12);
-
-      */
-      vm.node.append("title")
-      .text(function(d) { return ""+d.yearBorn+" ... "+d.yearDied; });
- // Now we create a force layout object and define its properties.
-// Those include the dimensions of the visualization and the arrays
-// of nodes and links.
-
-
-}
+		
    function merge(target, source) {
         Object.keys(source).forEach(function(property) {
             target[property] = source[property];
@@ -218,7 +92,7 @@ vm.init = function (selector,_graphconf) {
     simulation = initSimulation();
    }
    function toString(d) {
-      return ""+d.yearBorn+" ... "+d.yearDied; 
+      return ""+d.yearBorn+" <br>... "+d.yearDied; 
    }
    function updateNodes(n) {
         Array.prototype.push.apply(nodes, n);
