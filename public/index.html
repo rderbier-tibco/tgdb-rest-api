@@ -25,6 +25,7 @@
 
 
     <link rel="stylesheet" href="http://cdn.graphalchemist.com/alchemy.min.css">
+    <link rel="stylesheet" href="graph.css">
    
    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
    
@@ -66,6 +67,7 @@
 
 <!-- Our Website Javascripts -->
 <script src="main.js"></script>
+<script src="d3force-service.js"></script>
 
     <form class="panel panel-default form-horizontal" ng-submit="resetGraph(firstnode)" role="form">
         <div class="panel-heading">Set the initial node :</div>
@@ -100,5 +102,8 @@
     </form>
 
 </body>
+<div id="graphviz"></div>
+<!--<div graph-viz graph="graph" conf="graphconf"></div>
+-->
 
 </html>

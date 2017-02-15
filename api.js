@@ -42,6 +42,11 @@ app.get('/', function(req, res){
 });
 
 var port = 84;
+var fetchprops = {
+      "fetchsize": 10000,
+      "traversaldepth" : 2,
+      "edgelimit":30
+    };
 
 function isApiAuthenticated (req,res,next) {
 	// to be implemented
@@ -113,77 +118,190 @@ function createNode(req, res) {
   
     
 }
+/*
+*  Create an edge between two existing nodes
+* must retrieve the nodes first and create the edge
+* JSON body must have source, target and properties 
+* source and target must have the type, pkey of the node and the value of primary key
+*/
+function createEdge(req, res) {
+
+  var nodeTypeName=req.params.node_type;
+  var source = req.body.source;
+  var target = req.body.target;
+  var attributes = req.body.properties;
+  var result = {};
+  // need to get the graph Meta data -> verify we need to do that each time !
+  var nodeSourceMetadata = graphMetadata.getNodeType(source.type);
+  if (nodeSourceMetadata==undefined)
+      throw("Node source type "+source.type+" does not exist.");
+  var nodeTargetMetadata = graphMetadata.getNodeType(target.type);
+  if (nodeTargetMetadata==undefined)
+      throw("Node target type "+target.type+" does not exist.");
+     /* Step 1 - retrieve node source
+     */
+
+    var ckeySource = gof.createCompositeKey(source.type);
+    var ckeyTarget = gof.createCompositeKey(target.type);
+    for (var k in nodeSourceMetadata._pKeys) {
+                var key=nodeSourceMetadata._pKeys[k];
+                ckeySource.setAttribute(key,source[key]);
+                logger.logInfo("Source Primary key  "+key+" "+source[key]);
+            }
+    for (var k in nodeTargetMetadata._pKeys) {
+        var key=nodeSourceMetadata._pKeys[k];
+        ckeyTarget.setAttribute(key,target[key]);
+        logger.logInfo("Target Primary key  "+key+" "+source[key]);
+    }
+  
+    
+ 
+          
+    conn.getEntity(ckeySource, fetchprops, function (nodeFrom){
+      logger.logInfo("get source node ");
+      conn.getEntity(ckeyTarget, fetchprops, function (nodeTo){
+        logger.logInfo("get target node ");
+            var edge = gof.createUndirectedEdge(nodeFrom, nodeTo);
+       
+            for (var k in attributes) {
+                edge.setAttribute(k,attributes[k]);
+                logger.logInfo("Setting edge attribute "+k);
+            }
+             
+            logger.logInfo("Create edge : ");
+            conn.insertEntity(edge);
+            conn.commit(function(){
+              logger.logInfo(
+                  "Transaction completed for Edge");
+              result=entityToJS(edge);  
+              res.send(result); 
+            });
+      });
+
+    })
+  
+}
 
 function getNode(req, res) {
 
 	var type=req.params.node_type;
-    var pkey=req.params.key;
-    var value=req.params.value;
-	logger.logInfo(" retrieving entities "+type+" "+pkey+" "+value );
+  var keyValues=req.params[0].split("/");
+    
+	logger.logInfo(" retrieving entities "+type );
 	//conn.getGraphMetadata(true,function() {
     var nodeMetadata = graphMetadata.getNodeType(type);
     if (nodeMetadata==undefined)
       throw("Node type "+type+" does not exist.");
-
     try {
+
   	var ckey = gof.createCompositeKey(type);
+  	for ( var k in nodeMetadata._pKeys) {
+      ckey.setAttribute(nodeMetadata._pKeys[k], keyValues[k]);
+      logger.logInfo(" retrieving entities with "+nodeMetadata._pKeys[k]+" = "+keyValues[k] );
+    }
   	
-    ckey.setAttribute(pkey, value);
-  	var props = {
-  		"fetchsize": 10000,
-  		"traversaldepth" : 2,
-  		"edgelimit":30
-  	};
 	      	
-    conn.getEntity(ckey, props, function (ent){
+    conn.getEntity(ckey, fetchprops, function (ent){
 
         var result={};
         
         var edgeArray=[];
         var nodeArray=[];
         var nodeList={};
-        var nodeid=ent.getId().getHexString();
-        if (ent!=undefined) {
-	    	logger.logInfo(" got entity "+ent.getEntityKind().name);
-	    	var info=entityToJS(ent);
-	    	nodeList[nodeid]=info;
-	    	var curEdges = ent.getEdges();
-        logger.logInfo(" has edges : "+curEdges.length);
-	    	curEdges.forEach(function(edge) {
-          var edgeinfo = {};
-	    		edgeinfo=entityToJS(edge);
-	    		var from=edge.getVertices()[0];
-          var to=edge.getVertices()[1];
-          // add from and to nodes to the node map if necessary
-          if (from.getId().getHexString()!=nodeid) {
-              nodeList[from.getId().getHexString()]=entityToJS(from);
+        if ( ent != undefined ) {
+            var nodeid=ent.getId().getHexString();
+            if (ent!=undefined) {
+    	    	logger.logInfo(" got entity "+ent.getEntityKind().name);
+    	    	var info=entityToJS(ent);
+    	    	nodeList[nodeid]=info;
+    	    	var curEdges = ent.getEdges();
+            logger.logInfo(" has edges : "+curEdges.length);
+    	    	curEdges.forEach(function(edge) {
+              var edgeinfo = {};
+    	    		edgeinfo=entityToJS(edge);
+    	    		var from=edge.getVertices()[0];
+              var to=edge.getVertices()[1];
+              // add from and to nodes to the node map if necessary
+              if (from.getId().getHexString()!=nodeid) {
+                  nodeList[from.getId().getHexString()]=entityToJS(from);
+                  
+              }
+               if (to.getId().getHexString()!=nodeid) {
+                  nodeList[to.getId().getHexString()]=entityToJS(to);    
+              } 
+              edgeinfo.source=from.getId().getHexString();
               
-          }
-           if (to.getId().getHexString()!=nodeid) {
-              nodeList[to.getId().getHexString()]=entityToJS(to);    
-          } 
-          edgeinfo.source=from.getId().getHexString();
-          
-          edgeinfo.target=to.getId().getHexString();
-	    		
+              edgeinfo.target=to.getId().getHexString();
+    	    		
 
-	    		edgeArray.push(edgeinfo);
-	    	});
-        for (n in nodeList) {
-          nodeArray.push(nodeList[n]);
-        }
-        result["nodes"]=nodeArray;
-	    	result["links"]=edgeArray;
-	    	logger.logInfo(" got entity with attributes "+info);
-        }
-    	res.send(result);
-    })
+    	    		edgeArray.push(edgeinfo);
+    	    	});
+            for (n in nodeList) {
+              nodeArray.push(nodeList[n]);
+            }
+            result["nodes"]=nodeArray;
+    	    	result["links"]=edgeArray;
+    	    	logger.logInfo(" got entity with attributes "+info);
+            }
+          }
+        	res.send(result);
+        })
+   
   } catch (err) {
     res.status(404).send(err.message);
   }
 //})
 };
+function updateNode(req, res) {
 
+  var type=req.params.node_type;
+     var keyValues=req.params[0].split("/");
+   
+    var props=req.body;
+    var result = {};
+
+  logger.logInfo(" Updating entity  "+type );
+  //conn.getGraphMetadata(true,function() {
+    var nodeMetadata = graphMetadata.getNodeType(type);
+    if (nodeMetadata==undefined)
+      throw("Node type "+type+" does not exist.");
+    try {
+      var ckey = gof.createCompositeKey(type);
+      
+      for ( var k in nodeMetadata._pKeys) {
+        ckey.setAttribute(nodeMetadata._pKeys[k], keyValues[k]);
+        logger.logInfo(" Updating entity with "+nodeMetadata._pKeys[k]+" = "+keyValues[k] );
+      }
+
+            
+      conn.getEntity(ckey, {"traversaldepth" : 1}, function (ent){
+
+    
+      if ( ent != undefined ) {
+            for (var k in props) {
+                ent.setAttribute(k,props[k]);
+                logger.logInfo("Setting attribute "+k);
+            }
+            conn.updateEntity(ent);
+            conn.on("exception",function(exception){
+                logger.logError( "Exception Happens, message : " + exception.message);
+                //conn.disconnect();
+                res.send(exception.message);
+            }).commit(function(){
+             
+              result=entityToJS(ent);  
+              res.send(result);
+            }); // Write data to database
+        } else {
+          res.send(result); 
+        }
+      })
+   
+  } catch (err) {
+    res.status(404).send(err.message);
+  }
+//})
+};
 function searchGraph(req, res) {
     var queryString = req.body.query;
 	logger.logInfo(" searching for  "+queryString );
@@ -238,8 +356,14 @@ function searchGraph(req, res) {
     app.all('/api/*',isApiAuthenticated);
     app.route('/api/node/:node_type')
       .post(createNode);
+    app.route('/api/edge/')
+      .post(createEdge);
     app.get('/api/metadata', getMetadata);
-    app.get('/api/node/:node_type/:key/:value', getNode);
+    
+    app.route('/api/node/:node_type/*')
+    .get(getNode)
+    .put(updateNode);
+    
     app.post('/api/search', searchGraph);
 
    gof = conn.getGraphObjectFactory();
