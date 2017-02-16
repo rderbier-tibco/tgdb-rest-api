@@ -40,8 +40,12 @@ app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse applica
 app.get('/', function(req, res){
   res.redirect('/index.htm');
 });
+var conf = JSON.parse(fs.readFileSync('./conf/server.json'))
+var port = conf.service.port || 84;
+var linkURL = conf.dataSource.url, user=conf.dataSource.username, passw=conf.dataSource.password;
 
-var port = 84;
+
+
 var fetchprops = {
       "fetchsize": 10000,
       "traversaldepth" : 2,
@@ -338,12 +342,12 @@ function searchGraph(req, res) {
 	logger.logInfo('factory01, my id is = ' + factory01.getId());
 	
 	
-	var linkURL = 'tcp://127.0.0.1:8222';
+	
 	var properties = { 
 //		ConnectionImpl : './tcp/TCPConnection',
 //		ConnectionPoolSize : 5
 	};
-   var conn = factory01.createConnection(linkURL, 'admin', 'admin', properties);
+   var conn = factory01.createConnection(linkURL, user, passw, properties);
    //
    // create gof and graphMetaData global objects
    //

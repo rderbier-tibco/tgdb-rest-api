@@ -1,14 +1,13 @@
 {
-  "serviceLocations" : [
-    {"ip" : "127.0.0.1", "port" : "84"}
-  ],
+  "service" : 
+    { 
+     "port" : "84"
+    },
   
-  "dataSources" : {
-    "House" : {
-      "type"     : "test", 
+  "dataSource" : {
+     
       "url"      : "tcp://127.0.0.1:8222", 
-      "username" : "", 
-      "password" : ""
+      "username" : "admin", 
+      "password" : "admin"
     }
-}
 }

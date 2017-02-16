@@ -10,6 +10,7 @@ var app = angular.module('graphexplorer');
 app.service('graphVizService', function ($window) {
 	
 		console.log(" graphViz Service starting : ");
+    var edgetypefield;
 		var vm=this;
       var width = 800,
          height = 600;
@@ -17,13 +18,9 @@ app.service('graphVizService', function ($window) {
       var nodes=[];
       var links=[];
 		var node,relationship;
-      var options= {
-               nodeRadius: 20,
-               arrowSize: 4
-            };
 
-		vm.link=null;
-		vm.text=null;
+
+		
 		vm.d3 = $window.d3;
 		var graphconf={node:{}, link:{}};
 		
@@ -65,6 +62,7 @@ app.service('graphVizService', function ($window) {
     // init svgRelationships and svgNodes
 vm.init = function (selector,_graphconf) {
     graphconf=_graphconf;
+    edgetypefield = graphconf.default.edgetypefield ||  "relType";
     container = d3.select(selector);
 
     container.attr('class', 'neo4jd3')
@@ -72,17 +70,28 @@ vm.init = function (selector,_graphconf) {
     svg = container.append('svg')
                        .attr('width', width)
                        .attr('height', height)
-                       .attr('class', 'neo4jd3-graph')
-                       .append('g')
+                       .attr('class', 'neo4jd3-graph');
+                       
+    svg.append("svg:defs").append("svg:marker")    // This section adds in the arrows
+    .attr("id", "Arrow")
+    .attr("class","arrow")
+    .attr("viewBox", "-2 -2 5 5")
+    .attr("refX", 0)
+    .attr("refY", 0)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("markerUnits","strokeWidth")
+    .attr("orient", "auto")
+    .append("polygon").attr("points","-2,1.5 0,0 -2,-1.5");
+
+     svg=svg.append('g')
                        .attr('width', '100%')
                        .attr('height', '100%');
     
-    
 
-         if (vm.node!=null) {vm.node.remove();}
-         if (vm.link!=null) {vm.link.remove();}
-         if (vm.text!=null) {vm.text.remove();}
-         //vm.svg.selectAll("*").remove();
+      nodes=[];
+      links=[];   
+         svg.selectAll("*").remove();
    svgRelationships = svg.append('g')
                               .attr('class', 'relationships');
 
@@ -92,7 +101,11 @@ vm.init = function (selector,_graphconf) {
     simulation = initSimulation();
    }
    function toString(d) {
-      return ""+d.yearBorn+" <br>... "+d.yearDied; 
+      var title="";
+      for (a in d) {
+         title+=a+" : "+d[a]+"\x0A";
+      }
+      return title; 
    }
    function updateNodes(n) {
         Array.prototype.push.apply(nodes, n);
@@ -106,7 +119,7 @@ vm.init = function (selector,_graphconf) {
                     .on("dblclick",function(d){
                         var type=d["@name"];
                         console.log("more on ", d[graphconf.node[type].keyname]);
-                        getNode(type,d[graphconf.node[type].keyname],false);
+                        getNode(type,d[graphconf.node[type].keyname],false,d.x,d.y);
                      })
                    .on('click', function(d) {})
                    .on('mouseenter', function(d) {})
@@ -208,21 +221,13 @@ vm.init = function (selector,_graphconf) {
                            .attr('class', 'relationship');
 
      // add patch 
-    var text=relationship.append('text')
-                .attr('class', 'text')
-                .attr('fill', '#000000')
-                .attr('font-size', '8px')
-                .attr('pointer-events', 'none')
-                .attr('text-anchor', 'middle')
-                .text(function(d) {
-                    return d.type;
-                })
-   var line=relationship.append('line')
+    
+   var line=relationship.append('path')
                 .attr('class', 'line')
                 .attr("stroke-dasharray",function(d){
-                     if (d["relType"] != undefined) {
+                     if (d[edgetypefield] != undefined) {
 
-                        return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokedash || graphconf.default.linkstrokedash : graphconf.default.linkstrokedash)
+                        return (graphconf.link[d[edgetypefield]] ? graphconf.link[d[edgetypefield]].strokedash || graphconf.default.linkstrokedash : graphconf.default.linkstrokedash)
                      } else {
                         return (graphconf.default.linkstrokedash)
                      }
@@ -230,20 +235,36 @@ vm.init = function (selector,_graphconf) {
 
                   } )
                .attr("stroke-width",function(d){
-                  if (d["relType"] != undefined) {
+                  if (d[edgetypefield] != undefined) {
 
-                     return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokewidth || graphconf.default.strokewidth : graphconf.default.strokewidth)
+                     return (graphconf.link[d[edgetypefield]] ? graphconf.link[d[edgetypefield]].strokewidth || graphconf.default.strokewidth : graphconf.default.strokewidth)
                   } else {
                      return (graphconf.default.strokewidth)
                   }
-               });
+               })
+               .attr("marker-end", function(d) {
+                  var directed = graphconf.link[d[edgetypefield]] ? graphconf.link[d[edgetypefield]].directed || false : false;
+                  if (directed) {
+                      return "url(#Arrow)"
+                  } 
+                  return ("")
+              });
+    var text=relationship.append('text')
+                .attr('class', 'text')
+                .attr('fill', '#000000')
+                .attr('font-size', '10px')
+                .attr('pointer-events', 'none')
+                .attr('text-anchor', 'middle')
+                .text(function(d) {
+                    return d[edgetypefield];
+                });
+                  //  .attr('dominant-baseline='middle')
 
    var outline=relationship.append('path')
                 .attr('class', 'outline')
                 .attr('fill', '#a5abb6')
                 .attr('stroke', 'none');
-   var overlay=relationship.append('path')
-                .attr('class', 'overlay');
+  
 
    relationship = relationship.merge(svgRelationshipsData);
         relationshipLine = svg.selectAll('.relationship .line');
@@ -252,17 +273,16 @@ vm.init = function (selector,_graphconf) {
         relationshipOutline = svg.selectAll('.relationship .outline');
         relationshipOutline = outline.merge(relationshipOutline);
 
-        relationshipOverlay = svg.selectAll('.relationship .overlay');
-        relationshipOverlay = overlay.merge(relationshipOverlay);
+      
 
         relationshipText = svg.selectAll('.relationship .text');
         relationshipText = text.merge(relationshipText);
    }
    /*
    .attr("stroke-dasharray",function(d){
-      if (d["relType"] != undefined) {
+      if (d[edgetypefield] != undefined) {
 
-         return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokedash || graphconf.default.linkstrokedash : graphconf.default.linkstrokedash)
+         return (graphconf.link[d[edgetypefield]] ? graphconf.link[d[edgetypefield]].strokedash || graphconf.default.linkstrokedash : graphconf.default.linkstrokedash)
       } else {
          return (graphconf.default.linkstrokedash)
       }
@@ -270,9 +290,9 @@ vm.init = function (selector,_graphconf) {
 
    } )
    .attr("stroke-width",function(d){
-      if (d["relType"] != undefined) {
+      if (d[edgetypefield] != undefined) {
 
-         return (graphconf.link[d["relType"]] ? graphconf.link[d["relType"]].strokewidth || graphconf.default.strokewidth : graphconf.default.strokewidth)
+         return (graphconf.link[d[edgetypefield]] ? graphconf.link[d[edgetypefield]].strokewidth || graphconf.default.strokewidth : graphconf.default.strokewidth)
       } else {
          return (graphconf.default.strokewidth)
       }
@@ -282,7 +302,7 @@ vm.init = function (selector,_graphconf) {
    */
    
 
-vm.drawGraph = function (graph) {
+vm.drawGraph = function (graph, dx=0, dy=0) {
    //vm.graph=graph;
    
    //var rawSvg = $element.find("svg")[0];
@@ -311,21 +331,7 @@ vm.drawGraph = function (graph) {
    function rotatePoint(c, p, angle) {
         return rotate(c.x, c.y, p.x, p.y, angle);
     }
-    function unitaryNormalVector(source, target, newLength) {
-        var center = { x: 0, y: 0 },
-            vector = unitaryVector(source, target, newLength);
-
-        return rotatePoint(center, vector, 90);
-    }
-
-    function unitaryVector(source, target, newLength) {
-        var length = Math.sqrt(Math.pow(target.x - source.x, 2) + Math.pow(target.y - source.y, 2)) / Math.sqrt(newLength || 1);
-
-        return {
-            x: (target.x - source.x) / length,
-            y: (target.y - source.y) / length,
-        };
-    }
+ 
 function zoomed() {
 	svg.attr("transform", "translate(" + d3.event.transform.x + "," + d3.event.transform.y + ")" + " scale(" + d3.event.transform.k + ")");
 }
@@ -342,76 +348,41 @@ function ticked() {
           //      return 'translate(' + d.source.x + ', ' + d.source.y + ') rotate(' + angle + ')';
           //  });
          }
-         relationshipLine.attr("x1", function(d) { 
-                              console.log("d "+d.source.x); 
-                              return d.source.x; })
-                        .attr("y1", function(d) { return d.source.y; })
-                        .attr("x2", function(d) { return d.target.x; })
-                        .attr("y2", function(d) { return d.target.y; });
+         relationshipLine.attr("d", function(d) { 
+             var targetType=d.target["@name"];
+             if (targetType != undefined) {
+                var r = (graphconf.node[targetType] ? graphconf.node[targetType].r || graphconf.default.r : graphconf.default.r)
+             } else {
+                var r =  (graphconf.default.r)
+             }
+
+                     
+            var x1=d.source.x,y1=d.source.y,x2=d.target.x,y2=d.target.y;
+
+            var dx=x2-x1,dy=y2-y1,L=Math.sqrt(dx*dx+dy*dy);
+            var dl=1.5*r;
+            var xt=x1+(L-dl)*(x2-x1)/L;
+            var yt=y1+(L-dl)*(y2-y1)/L;
+            var path="M "+x1+" "+y1+" L "+xt+" "+yt;
+
+                        return path; });
+                        
    
          relationshipText.attr('transform', function(d) {
-                var angle = rotation(d.source, d.target);
-                return 'translate(' + d.source.x + ', ' + d.source.y + ') rotate(' + angle + ')';
-            })
-          .attr('transform', function(d) {
-            var angle = (rotation(d.source, d.target) + 360) % 360,
-                mirror = angle > 90 && angle < 270,
-                center = { x: 0, y: 0 },
-                n = unitaryNormalVector(d.source, d.target),
-                nWeight = mirror ? 2 : -3,
-                point = { x: (d.target.x - d.source.x) * 0.5 + n.x * nWeight, y: (d.target.y - d.source.y) * 0.5 + n.y * nWeight },
-                rotatedPoint = rotatePoint(center, point, angle);
+            var angle = rotation(d.source, d.target);
+            if (angle >90 ) angle -=180;
+            if (angle < -90) angle+=180;
 
-            return 'translate(' + rotatedPoint.x + ', ' + rotatedPoint.y + ') rotate(' + (mirror ? 180 : 0) + ')';
+            var point = { x: (d.target.x + d.source.x) * 0.5 , y: (d.target.y + d.source.y) * 0.5 };
+
+            return 'translate(' + point.x + ', ' + point.y + ') rotate(' + angle + ')';
         });
 
-	   // tickRelationshipsOutlines();
+	   
 //	vm.text.attr("transform", function(d) { 
 //		return "translate(" + d.x + "," + d.y + ")"; })
 }
-function tickRelationshipsOutlines() {
-        relationship.each(function(relationship) {
-            var rel = d3.select(this),
-                outline = rel.select('.outline'),
-                text = rel.select('.text'),
-                bbox = text.node().getBBox(),
-                padding = 3;
 
-            outline.attr('d', function(d) {
-                var center = { x: 0, y: 0 },
-                    angle = rotation(d.source, d.target),
-                    textBoundingBox = text.node().getBBox(),
-                    textPadding = 5,
-                    u = unitaryVector(d.source, d.target),
-                    textMargin = { x: (d.target.x - d.source.x - (textBoundingBox.width + textPadding) * u.x) * 0.5, y: (d.target.y - d.source.y - (textBoundingBox.width + textPadding) * u.y) * 0.5 },
-                    n = unitaryNormalVector(d.source, d.target),
-                    rotatedPointA1 = rotatePoint(center, { x: 0 + (options.nodeRadius + 1) * u.x - n.x, y: 0 + (options.nodeRadius + 1) * u.y - n.y }, angle),
-                    rotatedPointB1 = rotatePoint(center, { x: textMargin.x - n.x, y: textMargin.y - n.y }, angle),
-                    rotatedPointC1 = rotatePoint(center, { x: textMargin.x, y: textMargin.y }, angle),
-                    rotatedPointD1 = rotatePoint(center, { x: 0 + (options.nodeRadius + 1) * u.x, y: 0 + (options.nodeRadius + 1) * u.y }, angle),
-                    rotatedPointA2 = rotatePoint(center, { x: d.target.x - d.source.x - textMargin.x - n.x, y: d.target.y - d.source.y - textMargin.y - n.y }, angle),
-                    rotatedPointB2 = rotatePoint(center, { x: d.target.x - d.source.x - (options.nodeRadius + 1) * u.x - n.x - u.x * options.arrowSize, y: d.target.y - d.source.y - (options.nodeRadius + 1) * u.y - n.y - u.y * options.arrowSize }, angle),
-                    rotatedPointC2 = rotatePoint(center, { x: d.target.x - d.source.x - (options.nodeRadius + 1) * u.x - n.x + (n.x - u.x) * options.arrowSize, y: d.target.y - d.source.y - (options.nodeRadius + 1) * u.y - n.y + (n.y - u.y) * options.arrowSize }, angle),
-                    rotatedPointD2 = rotatePoint(center, { x: d.target.x - d.source.x - (options.nodeRadius + 1) * u.x, y: d.target.y - d.source.y - (options.nodeRadius + 1) * u.y }, angle),
-                    rotatedPointE2 = rotatePoint(center, { x: d.target.x - d.source.x - (options.nodeRadius + 1) * u.x + (- n.x - u.x) * options.arrowSize, y: d.target.y - d.source.y - (options.nodeRadius + 1) * u.y + (- n.y - u.y) * options.arrowSize }, angle),
-                    rotatedPointF2 = rotatePoint(center, { x: d.target.x - d.source.x - (options.nodeRadius + 1) * u.x - u.x * options.arrowSize, y: d.target.y - d.source.y - (options.nodeRadius + 1) * u.y - u.y * options.arrowSize }, angle),
-                    rotatedPointG2 = rotatePoint(center, { x: d.target.x - d.source.x - textMargin.x, y: d.target.y - d.source.y - textMargin.y }, angle);
-
-                return 'M ' + rotatedPointA1.x + ' ' + rotatedPointA1.y +
-                       ' L ' + rotatedPointB1.x + ' ' + rotatedPointB1.y +
-                       ' L ' + rotatedPointC1.x + ' ' + rotatedPointC1.y +
-                       ' L ' + rotatedPointD1.x + ' ' + rotatedPointD1.y +
-                       ' Z M ' + rotatedPointA2.x + ' ' + rotatedPointA2.y +
-                       ' L ' + rotatedPointB2.x + ' ' + rotatedPointB2.y +
-                       ' L ' + rotatedPointC2.x + ' ' + rotatedPointC2.y +
-                       ' L ' + rotatedPointD2.x + ' ' + rotatedPointD2.y +
-                       ' L ' + rotatedPointE2.x + ' ' + rotatedPointE2.y +
-                       ' L ' + rotatedPointF2.x + ' ' + rotatedPointF2.y +
-                       ' L ' + rotatedPointG2.x + ' ' + rotatedPointG2.y +
-                       ' Z';
-            });
-        });
-    }
 
 function nodeClicked(a,b) {
 	console.log(" Node clicked "+b);

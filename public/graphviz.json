@@ -1,0 +1,34 @@
+{
+  "default":{
+        "edgetypefield": "relType",
+    	"fill": "rgb(165, 171, 182)",
+    	"stroke": "rgb(154, 161, 172)",
+    	"stroke-width": "2px",
+    	"r": 15,
+    	"linkstrokedash": "none",
+    	"strokewidth": "2px"
+    },
+ "node":{
+    	"houseMemberType": {  
+    		"fill": "rgb(255, 216, 110)",
+    		"stroke": "rgb(237, 186, 57)",
+    		"r": 10,
+    		"label": "memberName"
+    	},
+    	"sometype" :{
+    		"fill": "rgb(255, 216, 110)",
+    		"stroke": "rgb(237, 186, 57)"
+    	}
+    },
+    "link":{
+    	"spouse": {  
+    		"strokedash": "5,5",
+    		"strokewidth": "4px"
+    	},
+    	"child": {  
+    	    "directed": true,
+    		"strokedash": "",
+    		"strokewidth": "2px"
+    	}
+    }
+}
