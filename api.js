@@ -357,18 +357,18 @@ function searchGraph(req, res) {
     // sample application
     app.use(express.static(__dirname + '/public'));
     // protect /api with the isApiAuthenticated 
-    app.all('/api/*',isApiAuthenticated);
-    app.route('/api/node/:node_type')
+    app.all('/tgdb/*',isApiAuthenticated);
+    app.route('/tgdb/node/:node_type')
       .post(createNode);
-    app.route('/api/edge/')
+    app.route('/tgdb/edge/')
       .post(createEdge);
-    app.get('/api/metadata', getMetadata);
+    app.get('/tgdb/metadata', getMetadata);
     
-    app.route('/api/node/:node_type/*')
+    app.route('/tgdb/node/:node_type/*')
     .get(getNode)
     .put(updateNode);
     
-    app.post('/api/search', searchGraph);
+    app.post('/tgdb/search', searchGraph);
 
    gof = conn.getGraphObjectFactory();
    conn.connect( function() {

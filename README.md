@@ -2,18 +2,21 @@
 Generic REST API for TIBCO Graph DB
 
 The server connects to one graph DB
--> credentials - to be defined. At the moment the REST API is anonymous and server side connect to graph DB with system user/password.
+At the moment the REST API is anonymous and server side connects to graph DB with system user/password.
+
 #Install
 
 clone this repo
+
 edit api.conf 
 `
 > npm install
+
 > node api.js
 `
 
 # REST API 
-**baseurl  : http://<host>:<port>/tgdb/**
+**baseurl  : http://host:port/tgdb**
 
 
 ### Get metadata
@@ -21,13 +24,18 @@ GET /metadata
 
 ### Create a node 
 
-POST /tgdb/node/<type>
+POST /node/<<nodeType>>
+
 Body
+'
 { "a": "value",
+
 …}
+'
 
 ###Create an edge 
-POST <baseurl>/edge/
+POST /edge
+
 Body 
 {
 	"source": {
@@ -46,21 +54,21 @@ Body
 }
 
 ###Get a NODE 
-GET /node/<type>/<keyValue>/<keyValue>/...
+GET /node/<<type>>/<<keyValue>>/<<keyValue>>/...
 With the assumption that key values are given in the order of primary keys defined for this type.
 Ex:
-http://127.0.0.1:84/tgdb/node/houseMemberType/memberName/Joseph%20Bonaparte
+http://127.0.0.1:84/tgdb/node/houseMemberType/Joseph%20Bonaparte
 ### Update a  NODE 
-UPDATE /node/<type>/<keyValue>/<keyValue>/…
+UPDATE /node/<<type>>/<<keyValue>>/<<keyValue>>/…
 Body : json with properties and value
 
 Assumption that key values are given in the order of primary keys defined for this type.
 Ex:
-http://127.0.0.1:84/tgdb/node/houseMemberType/memberName/Joseph%20Bonaparte
+http://127.0.0.1:84/tgdb/node/houseMemberType/Joseph%20Bonaparte
 
 
 ###Search Nodes
-POST /tgdb/search/
+POST /search/
 Body contains the query string : 
 Sample body :
 {

@@ -8,9 +8,20 @@
 	},
 	"item": [
 		{
-			"name": "http://127.0.0.1:84/api/node/houseMemberType/memberName/Joseph%20Bonaparte",
+			"name": "getMetadata",
 			"request": {
-				"url": "http://127.0.0.1:84/api/node/houseMemberType/memberName/Carlo%20Bonaparte",
+				"url": "http://127.0.0.1:84/tgdb/metadata",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "getNode",
+			"request": {
+				"url": "http://127.0.0.1:84/tgdb/node/houseMemberType/Raphael",
 				"method": "GET",
 				"header": [
 					{
@@ -28,9 +39,9 @@
 			"response": []
 		},
 		{
-			"name": "http://127.0.0.1:84/api/search",
+			"name": "create node",
 			"request": {
-				"url": "http://127.0.0.1:84/api/search",
+				"url": "http://127.0.0.1:84/tgdb/node/houseMemberType",
 				"method": "POST",
 				"header": [
 					{
@@ -41,47 +52,16 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"query\":\"@nodetype = 'houseMemberType' and yearBorn > 0;\"\n}"
-				},
-				"description": ""
-			},
-			"response": []
-		},
-		{
-			"name": "http://127.0.0.1:84/api/metadata",
-			"request": {
-				"url": "http://127.0.0.1:84/api/metadata",
-				"method": "GET",
-				"header": [],
-				"body": {},
-				"description": ""
-			},
-			"response": []
-		},
-		{
-			"name": "http://127.0.0.1:84/api/node/houseMemberType",
-			"request": {
-				"url": "http://127.0.0.1:84/api/node/houseMemberType",
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"description": ""
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"memberName\": \"Raphael\"\n}"
+					"raw": "{\n    \"memberName\": \"Raphael4\"\n}"
 				},
 				"description": "test insert node"
 			},
 			"response": []
 		},
 		{
-			"name": "create Edge",
+			"name": "search",
 			"request": {
-				"url": "http://127.0.0.1:84/api/edge",
+				"url": "http://127.0.0.1:84/tgdb/search",
 				"method": "POST",
 				"header": [
 					{
@@ -92,7 +72,27 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"source\": {\n\t\t\"type\": \"houseMemberType\",\n\t\t\"memberName\": \"Raphael\"\n\t},\n\t\"target\": {\n\t\t\"type\": \"houseMemberType\",\n\t\t\"memberName\": \"Raphael2\"\n\t},\n\t\"properties\" : {\n\t\t\"relType\": \"know\",\n\t\t\"since\": \"now\"\n\t}\n    \n}"
+					"raw": "{\n  \"query\":\"@nodetype = 'houseMemberType' and memberName = 'Raphael';\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "create Edge",
+			"request": {
+				"url": "http://127.0.0.1:84/tgdb/edge",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"source\": {\n\t\t\"type\": \"houseMemberType\",\n\t\t\"memberName\": \"Raphael\"\n\t},\n\t\"target\": {\n\t\t\"type\": \"houseMemberType\",\n\t\t\"memberName\": \"Raphael3\"\n\t},\n\t\"properties\" : {\n\t\t\"relType\": \"RE1\",\n\t\t\"since\": \"now\"\n\t}\n    \n}"
 				},
 				"description": "test insert node"
 			},
@@ -101,7 +101,7 @@
 		{
 			"name": "update node",
 			"request": {
-				"url": "http://127.0.0.1:84/api/node/houseMemberType/memberName/Raphael",
+				"url": "http://127.0.0.1:84/tgdb/node/houseMemberType/Raphael",
 				"method": "PUT",
 				"header": [
 					{
@@ -112,7 +112,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"memberName\": \"Raphael\"\n}"
+					"raw": "{\n    \"crownName\": \"KING ONE\",\n    \"misc\":\"test\"\n}"
 				},
 				"description": "update node"
 			},
