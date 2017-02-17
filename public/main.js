@@ -68,7 +68,7 @@
       }
 
 
-      $http.get('/api/node/'+type+'/'+keyvalue)
+      $http.get('/tgdb/node/'+type+'/'+keyvalue)
       .success(function(data) {
           var update=false;
       	data.nodes.forEach(function (n) {
@@ -118,7 +118,7 @@ $window.d3.json("graphviz.json", function(error, conf) {
 
             graphconf=conf;
             
-            $http.get('/api/metadata')
+            $http.get('/tgdb/metadata')
             .success(function(data) {
               for (nt in data.nodeTypes) {
                 var n=data.nodeTypes[nt];
