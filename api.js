@@ -49,7 +49,7 @@ var linkURL = conf.dataSource.url, user=conf.dataSource.username, passw=conf.dat
 var fetchprops = {
       "fetchsize": 10000,
       "traversaldepth" : 2,
-      "edgelimit":30
+      "edgelimit":1000
     };
 
 function isApiAuthenticated (req,res,next) {
@@ -309,7 +309,7 @@ function updateNode(req, res) {
 function searchGraph(req, res) {
     var queryString = req.body.query;
 	logger.logInfo(" searching for  "+queryString );
-  conn.getGraphMetadata(true,function() {
+  
 	 conn.executeQuery(queryString, 
     		              TGQueryOption.DEFAULT_QUERY_OPTION,
     		              function(resultSet) {     	
@@ -318,20 +318,17 @@ function searchGraph(req, res) {
     	logger.logInfo("get result set ");
     	// let's build and array for the result
     	var result=[];
-    	while (resultSet.hasNext()) {
-    	        var node = resultSet.next();
-    	        result.push(entityToJS(node));
-    	        
-    	      //  PrintUtility.printEntitiesBreadth(node, 5);
-    	    }
-    	//var attrArray=ent.getAttributes();
-    	//attrArray.forEach(function(attr) {
-    	//	info[attr.getName()]=attr.getValue();
-    	//});
-
-    	//logger.logInfo(" got entity with attributes "+info);
-    	res.send(result);
-    })
+      if(resultSet != undefined) {
+          	while (resultSet.hasNext()) {
+          	        var node = resultSet.next();
+          	        result.push(entityToJS(node));
+          	        
+          	      //  PrintUtility.printEntitiesBreadth(node, 5);
+          	    }
+          	res.send(result);
+      } else {
+            res.send(result);
+      }
 	})
 };
 
