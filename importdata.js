@@ -24,6 +24,7 @@ var logger = TGLogManager.getLogger();
 var gof=null;
 var conn=null;
 var graphMetadata=null;
+var count=0;
 
 function createEdge(source, target, attributes, callback) {
 
@@ -97,7 +98,7 @@ function createNode(nodeTypeName, props,callback) {
         for (var k in props) {
         //  if (nodeMetadataAttributes[k] != undefined ) {
                 nodeType.setAttribute(k,props[k]);
-                console.log("Using attribute "+k);
+                //console.log("Using attribute "+k);
         //  } else {
         //      logger.logInfo("Attribute "+k+" not in metadata.");
         //  }
@@ -141,10 +142,13 @@ function insertUser( alldata,callback) {
         var orgid=data[2].trim()+"."+data[1].trim();
         nodeInfo={
             "userId":username,
-            "userName":username
+            "userName":username,
+            "dummy":"user"
         }
         
         var node1 = createNode("userType", nodeInfo,function(){
+            console.log(" line "+count);
+            count-=1;
             insertUser(alldata);
         });
     }
@@ -185,10 +189,12 @@ function test() {
     conn = connectionFactory.createConnection(linkURL, 'admin', 'admin', null);
     gof = conn.getGraphObjectFactory();
 	//var filename = "./dataorg.csv";
-	var filename = "./users.txt";
+	var filename = "./import/users.txt";
     
     var data = fs.readFileSync(filename,'UTF-8').toString().split('\n');
-     
+    count=data.length;
+    console.log("File has "+count+" lines.") 
+
     //data.forEach(function(l) {console.log(l)})
     
     conn.on('exception', function(exception){
@@ -201,8 +207,8 @@ function test() {
             conn.getGraphMetadata(true, function(gmd) {
               graphMetadata=gmd;
 	          logger.logInfo('get metadata');
-              insertRelation(data);
-             // insertUser(data);
+              //insertRelation(data);
+              insertUser(data);
              //insertOrg(data);
 			  });
     		

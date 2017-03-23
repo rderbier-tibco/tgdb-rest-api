@@ -62,6 +62,10 @@ function isApiAuthenticated (req,res,next) {
 function entityToJS(ent) {
   var info={};
   info["id"]=ent.getId().getHexString();
+  var pkey=getPkeyString(ent);
+  if (pkey!=undefined) {
+    info["pkey"]=pkey;
+  }
   var attrArray=ent.getAttributes();
     	attrArray.forEach(function(attr) {
         
@@ -108,14 +112,16 @@ function createNode(req, res) {
 		//	}
 		}
 			conn.insertEntity(nodeType);
-    	conn.on("exception",function(exception){
-          logger.logError( "Exception Happens, message : " + exception.message);
-          //conn.disconnect();
-          res.send(exception.message);
-      }).commit(function(){
-				logger.logInfo(
+    	conn.commit(function(result,exception){
+				if( exception == undefined) {
+          logger.logInfo(
 						"Transaction completed for Node : " + props[0]);
-				result=entityToJS(nodeType);	
+				    result=entityToJS(nodeType);	
+        } else {
+          logger.logInfo(exception);
+          result={}
+        }
+
         res.send(result);	
 			}); // Write data to database
        
@@ -144,24 +150,28 @@ function createEdge(req, res) {
       throw("Node target type "+target.type+" does not exist.");
      /* Step 1 - retrieve node source
      */
+    
 
     var ckeySource = gof.createCompositeKey(source.type);
     var ckeyTarget = gof.createCompositeKey(target.type);
     for (var k in nodeSourceMetadata._pKeys) {
                 var key=nodeSourceMetadata._pKeys[k];
                 ckeySource.setAttribute(key,source[key]);
+               
                 logger.logInfo("Source Primary key  "+key+" "+source[key]);
             }
     for (var k in nodeTargetMetadata._pKeys) {
         var key=nodeSourceMetadata._pKeys[k];
         ckeyTarget.setAttribute(key,target[key]);
-        logger.logInfo("Target Primary key  "+key+" "+source[key]);
+       
+        logger.logInfo("Target Primary key  "+key+" "+target[key]);
     }
   
     
- 
+
+    
           
-    conn.getEntity(ckeySource, fetchprops, function (nodeFrom){
+   conn.getEntity(ckeySource, fetchprops, function (nodeFrom){
       logger.logInfo("get source node ");
       conn.getEntity(ckeyTarget, fetchprops, function (nodeTo){
         logger.logInfo("get target node ");
@@ -185,13 +195,88 @@ function createEdge(req, res) {
     })
   
 }
+function getPkeyString(n) {
+  var pkeystring;
+  if (n.getAttribute("@name")!=undefined) {
+  var type = n.getAttribute("@name").getValue();
+  if (type!= undefined) {
+   var nodeMetadata = graphMetadata.getNodeType(type);
+            var pkey=[];
+            
+            if (nodeMetadata!=undefined) {
+              for ( var k in nodeMetadata._pKeys) {
+                pkey.push(n.getAttribute(nodeMetadata._pKeys[k]).getValue());
+                
+              }
+              pkeystring=pkey.join(":");
+            }
+            
+  }
+  }
+  return pkeystring;
+}
 
+function addNode(n,d,nodeList,edgeList) {
+  // node, depth, lists
+  var newNodeArray=[];
+  if (d>0) {
+      
+            var nodeid=n.getId().getHexString();
+            // build a field "pkey" with the value of primary key attributes
+            
+
+            var info=entityToJS(n);
+            nodeList[nodeid]=info;
+            var curEdges = n.getEdges();
+            logger.logInfo("depth "+d+" node id "+nodeid+"  has edges : "+curEdges.length);
+            curEdges.forEach(function(edge) {
+              var edgeinfo = {};
+              var edgeid=edge.getId().getHexString();
+
+              edgeinfo=entityToJS(edge);
+              logger.logInfo("Edge "+edgeid+" "+edgeinfo);
+              var from=edge.getVertices()[0];
+              var to=edge.getVertices()[1];
+              // add from and to nodes to the node map if necessary
+              var fromid =from.getId().getHexString();
+              var toid =to.getId().getHexString();
+              
+              if (nodeList[fromid]==undefined) {
+                  
+                  nodeList[fromid]=entityToJS(from);
+                  newNodeArray.push(from);  
+              }
+              if (nodeList[toid]==undefined) {
+                  
+                  nodeList[toid]=entityToJS(to);  
+                  newNodeArray.push(to);
+              } 
+              
+              if (edgeList[edgeid]==undefined) {
+                edgeinfo.source=fromid;
+                edgeinfo.target=toid;
+              
+                edgeinfo.direction=edge.getDirection().ordinal;
+                edgeList[edgeid]=edgeinfo;
+              }
+            });
+            // recursive on new nodes
+            newNodeArray.forEach(function(nn) {
+              addNode(nn,d-1,nodeList,edgeList);
+            });
+            
+            
+          
+  }
+}
 function getNode(req, res) {
 
 	var type=req.params.node_type;
   var keyValues=req.params[0].split("/");
+  var depth=req.query.depth;
+  if (depth==undefined) depth=1;
     
-	logger.logInfo(" retrieving entities "+type );
+	logger.logInfo(" retrieving entities "+ type +" with depth "+depth);
 	//conn.getGraphMetadata(true,function() {
     var nodeMetadata = graphMetadata.getNodeType(type);
     if (nodeMetadata==undefined)
@@ -203,50 +288,34 @@ function getNode(req, res) {
       ckey.setAttribute(nodeMetadata._pKeys[k], keyValues[k]);
       logger.logInfo(" retrieving entities with "+nodeMetadata._pKeys[k]+" = "+keyValues[k] );
     }
-  	
+  	var props = {
+      "fetchsize": 10000,
+      "traversaldepth" : depth+1,
+      "edgelimit":1000
+    };
 	      	
-    conn.getEntity(ckey, fetchprops, function (ent){
+    conn.getEntity(ckey, props, function (ent){
 
         var result={};
         
         var edgeArray=[];
         var nodeArray=[];
         var nodeList={};
+        var edgeList={};
         if ( ent != undefined ) {
-            var nodeid=ent.getId().getHexString();
-            if (ent!=undefined) {
-    	    	logger.logInfo(" got entity "+ent.getEntityKind().name);
-    	    	var info=entityToJS(ent);
-    	    	nodeList[nodeid]=info;
-    	    	var curEdges = ent.getEdges();
-            logger.logInfo(" has edges : "+curEdges.length);
-    	    	curEdges.forEach(function(edge) {
-              var edgeinfo = {};
-    	    		edgeinfo=entityToJS(edge);
-    	    		var from=edge.getVertices()[0];
-              var to=edge.getVertices()[1];
-              // add from and to nodes to the node map if necessary
-              if (from.getId().getHexString()!=nodeid) {
-                  nodeList[from.getId().getHexString()]=entityToJS(from);
-                  
-              }
-               if (to.getId().getHexString()!=nodeid) {
-                  nodeList[to.getId().getHexString()]=entityToJS(to);    
-              } 
-              edgeinfo.source=from.getId().getHexString();
-              
-              edgeinfo.target=to.getId().getHexString();
-    	    		
+            addNode(ent,depth,nodeList,edgeList);
 
-    	    		edgeArray.push(edgeinfo);
-    	    	});
+            
             for (n in nodeList) {
               nodeArray.push(nodeList[n]);
             }
+            for (e in edgeList) {
+              edgeArray.push(edgeList[e]);
+            }
             result["nodes"]=nodeArray;
     	    	result["links"]=edgeArray;
-    	    	logger.logInfo(" got entity with attributes "+info);
-            }
+    	    	
+            
           }
         	res.send(result);
         })
@@ -366,7 +435,12 @@ function searchGraph(req, res) {
     .put(updateNode);
     
     app.post('/tgdb/search', searchGraph);
-
+app.use(function(err, req, res, next) {
+  // Do logging and user-friendly error message display
+  console.error(err);
+  res.status(400).send({message: err});
+});
+// 
    gof = conn.getGraphObjectFactory();
    conn.connect( function() {
    	      logger.logInfo("Connected ");
